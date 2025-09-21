@@ -65,7 +65,8 @@ class OpenAILLM:
             content = chat.choices[0].message.content
 
         # Naive JSON extraction (for robustness)
-        import json, re
+        import json
+        import re
         match = re.search(r"\{.*\}", content, re.DOTALL)
         if not match:
             return truncate_words(content.strip(), max_words), 0.4
