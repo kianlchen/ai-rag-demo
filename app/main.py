@@ -10,6 +10,7 @@ app = FastAPI(title="AI RAG Demo", version="1.0.0")
 router = APIRouter(prefix="/agent", tags=["agent"])
 _agent = Agent(REGISTRY)
 
+
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
