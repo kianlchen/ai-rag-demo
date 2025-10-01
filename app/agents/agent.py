@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Dict
 
 from .schemas import AgentResponse, AgentResult
@@ -7,6 +8,15 @@ from .tools import Tool
 
 _DIGIT_CHARS = set("0123456789")
 _OP_CHARS = set("+-*/()")
+
+MATH_RE = re.compile(r"^[0-9+\-*/().\s]+$")
+
+TOOL_ALIASES = {
+    "calc": "calculator",
+    "calculate": "calculator",
+    "echo": "echo",
+    "ping": "ping",
+}
 
 
 class Agent:
@@ -19,13 +29,24 @@ class Agent:
     def __init__(self, tools: Dict[str, Tool]) -> None:
         self.tools = tools
         self.history: list[AgentResult] = []
+        self._last_payload = ""
 
     def decide_tool(self, text: str) -> str:
-        t = text.strip().lower()
-        if t == "ping":
+        t = text.strip()
+        if ":" in t:
+            alias, payload = t.split(":", 1)
+            alias = alias.strip().lower()
+            tool_name = TOOL_ALIASES.get(alias)
+            if tool_name and tool_name in self.tools:
+                self._last_payload = payload.strip()
+                return tool_name
+        if t.lower() == "ping":
+            self._last_payload = ""
             return "ping"
-        if any(ch in _DIGIT_CHARS or ch in _OP_CHARS for ch in text):
+        if MATH_RE.match(t) or any((ch in _DIGIT_CHARS) or (ch in _OP_CHARS) for ch in t):
+            self._last_payload = t
             return "calculator"
+        self._last_payload = t
         return "echo"
 
     def run(self, text: str) -> AgentResponse:
@@ -35,7 +56,10 @@ class Agent:
             result = AgentResult(tool="none", output="no_suitable_tool")
             self.history.append(result)
             return AgentResponse(tool=result.tool, output=result.output, history=self.history[-10:])
-        output = tool(text)
+        try:
+            output = tool(self._last_payload)
+        except Exception as e:
+            output = f"tool_error: {type(e).__name__}"
         result = AgentResult(tool=tool_name, output=output)
         self.history.append(result)
         return AgentResponse(tool=tool_name, output=output, history=self.history[-10:])

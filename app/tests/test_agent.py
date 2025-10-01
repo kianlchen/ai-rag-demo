@@ -24,6 +24,26 @@ def test_calculator_invalid():
     assert resp.output == "calc_error"
 
 
+def test_agent_calc_prefix():
+    agent = Agent(REGISTRY)
+    resp = agent.run("calc: 3 * (4 + 5)")
+    assert resp.tool == "calculator"
+    assert resp.output in ("27", "27.0")
+
+
+def test_agent_tool_error():
+    # a tool that raises an error
+    def boom(_: str) -> str:
+        return 1 / 0  # ZeroDivisionError
+
+    agent = Agent({"boom": boom})
+    # force the agent to choose erroring tool
+    agent.decide_tool = lambda _: "boom"
+    resp = agent.run("anything")
+    assert resp.tool == "boom"
+    assert resp.output.startswith("tool_error:") and "ZeroDivisionError" in resp.output
+
+
 def test_eval_node_unsupported_raises():
     node = ast.parse("foo", mode="eval")
     with pytest.raises(ValueError, match="unsupported expression"):
