@@ -8,7 +8,7 @@ This project demonstrates how to build and run a simple AI-powered FastAPI servi
 ## Agent Scaffolding
 
 The `/agent` endpoint is backed by a minimal, rule-based agent.
-It decides which tool to run based on simple heuristics"
+It decides which tool to run based on simple heuristics
 
 1. **Command prefixes**
    - `calc: <expr>` -> runs the calculator
