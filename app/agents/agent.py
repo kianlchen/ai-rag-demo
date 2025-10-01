@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import Dict
+
 from .schemas import AgentResponse, AgentResult
 from .tools import Tool
 
@@ -32,9 +34,7 @@ class Agent:
         if not tool:
             result = AgentResult(tool="none", output="no_suitable_tool")
             self.history.append(result)
-            return AgentResponse(
-                tool=result.tool, output=result.output, history=self.history[-10:]
-            )
+            return AgentResponse(tool=result.tool, output=result.output, history=self.history[-10:])
         output = tool(text)
         result = AgentResult(tool=tool_name, output=output)
         self.history.append(result)

@@ -1,9 +1,11 @@
 import ast
+
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
+
 from app.agents.agent import Agent
 from app.agents.tools import REGISTRY, _eval_node
+from app.main import app
 
 client = TestClient(app)
 

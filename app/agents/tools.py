@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import ast
 import operator as op
 from typing import Callable, Dict

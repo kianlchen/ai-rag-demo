@@ -14,24 +14,27 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                 python-version: "3.11"
-                
+                cache: "pip"
+
             - name: Install deps
               run: |
                 python -m venv .venv
                 . .venv/bin/activate
                 python -m pip install --upgrade pip
                 pip install -r requirements.txt
+                pip install -e .
 
             - name: Lint
               run: |
                 . .venv/bin/activate
                 ruff check .
                 black --check .
+                isort . --check-only
 
             - name: Tests
               run: |
                 . .venv/bin/activate
-                pytest
+                pytest --cov=app --cov-report=term-missing
 
             - name: Docker build
               run: |

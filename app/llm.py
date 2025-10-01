@@ -1,14 +1,14 @@
 from __future__ import annotations
+
 from typing import Protocol, Tuple
+
 from .config import settings
 from .utils import truncate_words
 
 
 # LLM interface
 class LLM(Protocol):
-    def summarize(
-        self, text: str, max_words: int = 80, strict: bool = False
-    ) -> Tuple[str, float]:
+    def summarize(self, text: str, max_words: int = 80, strict: bool = False) -> Tuple[str, float]:
         """
         Returns (summary, confidence in [0,1]).
         Implementations should NOT raise on minotr format issues.
@@ -17,14 +17,10 @@ class LLM(Protocol):
 
 # Dummy provider (safe for tests / offline)
 class DummyLLM:
-    def summarize(
-        self, text: str, max_words: int = 80, strict: bool = False
-    ) -> Tuple[str, float]:
+    def summarize(self, text: str, max_words: int = 80, strict: bool = False) -> Tuple[str, float]:
         snippet = text.strip().splitlines()[0]
         base = (
-            snippet
-            if len(snippet.split()) <= max_words
-            else " ".join(snippet.split()[:max_words])
+            snippet if len(snippet.split()) <= max_words else " ".join(snippet.split()[:max_words])
         )
         # pretend to be confident if text is short; less confidence if long
         conf = 0.85 if len(text) < 500 else 0.55
@@ -41,13 +37,9 @@ class OpenAILLM:
                 "OpenAI package not installed. Please install with `pip install openai`"
             ) from e
         self._OpenAI = OpenAI
-        self._client = OpenAI(
-            api_key=settings.openai_api_key, base_url=settings.openai_base_url
-        )
+        self._client = OpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
 
-    def summarize(
-        self, text: str, max_words: int = 80, strict: bool = False
-    ) -> Tuple[str, float]:
+    def summarize(self, text: str, max_words: int = 80, strict: bool = False) -> Tuple[str, float]:
         system = (
             "You are a concise assistant. Summarize the user's text in at most "
             f"{max_words} words. Always return JSON with keys: summary, confidence"

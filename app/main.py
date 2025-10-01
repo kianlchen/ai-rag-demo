@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, APIRouter
-from .schemas import SummarizeRequest, SummarizeResponse
-from .llm import summarize_with_retry
-from .utils import truncate_words
+from fastapi import APIRouter, FastAPI, HTTPException
+
 from .agents.agent import Agent
-from .agents.tools import REGISTRY
 from .agents.schemas import AgentRequest, AgentResponse
+from .agents.tools import REGISTRY
+from .llm import summarize_with_retry
+from .schemas import SummarizeRequest, SummarizeResponse
+from .utils import truncate_words
 
 app = FastAPI(title="AI RAG Demo", version="1.0.0")
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -19,9 +20,7 @@ def ping():
 @app.post("/summarize", response_model=SummarizeResponse)
 def summarize(req: SummarizeRequest):
     if not req.text.strip():
-        raise HTTPException(
-            status_code=400, detail="Text cannot be empty or whitespace"
-        )
+        raise HTTPException(status_code=400, detail="Text cannot be empty or whitespace")
     # defensive cap
     text = req.text.strip()
     summary, conf, _ = summarize_with_retry(text, req.max_words)
