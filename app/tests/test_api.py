@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app import llm as llm_module
 from app.main import app
+from app.summarize import llm as llm_module
 
 client = TestClient(app)
 
