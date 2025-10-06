@@ -4,16 +4,18 @@ This project demonstrates how to build and run a simple AI-powered FastAPI servi
 - **`/summarize`**: Uses a pluggable LLM (dummy by default) to shorten or summarize text with basic retry/self-check logic.
 - **`/agent`**: A minimal, rule-based agent that decides which tool to run (calculator, ping, echo), execute it, and return structured results with history.
 - **`/ping`**: Simple health check that returns `{"status": "ok"}`. Useful for monitoring or testing service availability.
+- **`/rag`**: Simple retrieval API to add and query text documents, used by the agent's `rag:` tool for keyword-based search.
 
 ## Agent Scaffolding
 
 The `/agent` endpoint is backed by a minimal, rule-based agent.
-It decides which tool to run based on simple heuristics
+It decides which tool to run based on simple heuristics:
 
 1. **Command prefixes**
    - `calc: <expr>` -> runs the calculator
    - `echo: <text>` -> runs the echo tool
    - `ping` -> runs the ping tool
+   - `rag: <text>` -> runs the rag tool
 
 2. **Math detection**
    - If the input looks like a math expression (digits/operators only), the calculator tool is used.
@@ -30,6 +32,37 @@ It decides which tool to run based on simple heuristics
 
 The agent also maintains a **short history** of the last 10 interactions.
 This is the foundation for more advanced features in the future.
+
+## RAG Retrieval
+
+The RAG (Retrieval-Augmented Generation) module provides a minimal in-memory document store and keyword search API.
+
+- **`POST /rag/add`** - add a new document
+  Example:
+  ```bash
+  curl -s -X POST http://127.0.0.1:8000/rag/add \
+    -H "Content-Type: application/json" \
+    -d '{"text":"LangChain is a framework for LLM applications"}'
+  ```
+- **`POST /rag/query`** - search for documents by keyword
+  Example:
+  ```bash
+  curl -s -X POST http://127.0.0.1:8000/rag/query \
+    -H "Content-Type: application/json" \
+    -d '{"query":"LangChain"}'
+  ```
+
+You can also access retrieval through the agent:
+```bash
+curl -s -X POST http://127.0.0.1:8000/agent \
+  -H "Content-Type: application/json" \
+  -d '{"text":"rag: LangChain"}'
+```
+
+Results are ranked by:
+1. Keyword frequency
+2. First occurrence position
+3. Document length
 
 ## Setup
 
@@ -50,7 +83,7 @@ docker run --rm -p 8000:8000 --env-file .env ai-rag-demo:dev
 
 ## Run tests
 ```bash
-PYTHONPATH=. pytest --cov=app --cov-report=term-missing
+pytest --cov=app --cov-report=term-missing
 ```
 
 ## Examples
@@ -72,4 +105,50 @@ curl -s -X POST http://127.0.0.1:8000/agent \
 ### ping
 ```bash
 curl -s http://127.0.0.1:8000/ping
+```
+
+
+### RAG API
+You can directly use the `/rag` routes to add and query text documents.
+
+#### Add documents
+```bash
+curl -s -X POST http://127.0.0.1:8000/rag/add \
+  -H "Content-Type: application/json" \
+  -d '{"text":"RAG retrieves context before generation"}'
+```
+
+#### Query documents
+```bash
+curl -s -X POST http://127.0.0.1:8000/rag/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"RAG","limit":3}'
+```
+
+#### Example response
+```json
+{
+  "results": [
+    {
+      "id": "2d3c6c22-5d3c-46e7-8d3f-b67c02b1dbd2",
+      "text": "RAG retrieves context before generation"
+    }
+  ]
+}
+```
+
+#### Query through the Agent
+```bash
+curl -s -X POST http://127.0.0.1:8000/agent \
+  -H "Content-Type: application/json" \
+  -d '{"text":"rag: RAG"}' | jq
+```
+
+#### Example response
+```json
+{
+  "tool": "rag_search",
+  "output": "[{\"id\":\"...\",\"text\":\"RAG retrieves context before generation\"}]",
+  "history": [...]
+}
 ```

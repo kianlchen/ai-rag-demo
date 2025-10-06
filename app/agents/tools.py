@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import ast
+import json
 import operator as op
 from typing import Callable, Dict
+
+from app.rag.store import STORE
 
 Tool = Callable[[str], str]
 
@@ -54,4 +57,17 @@ def ping(_: str) -> str:
     return "pong"
 
 
-REGISTRY: Dict[str, Tool] = {"calculator": calculator, "echo": echo, "ping": ping}
+def rag_search(query: str) -> str:
+    results = STORE.query(query, limit=3)
+    if not results:
+        return "no_results"
+    # return a compact json string; to be structured later
+    return json.dumps(results)
+
+
+REGISTRY: Dict[str, Tool] = {
+    "calculator": calculator,
+    "echo": echo,
+    "ping": ping,
+    "rag_search": rag_search,
+}

@@ -1,4 +1,5 @@
 import ast
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -6,8 +7,16 @@ from fastapi.testclient import TestClient
 from app.agents.agent import Agent
 from app.agents.tools import REGISTRY, _eval_node
 from app.main import app
+from app.rag.store import STORE
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _clear_store():
+    STORE.docs.clear()
+    yield
+    STORE.docs.clear()
 
 
 def test_decide_and_run_calculator():
@@ -91,3 +100,19 @@ def test_agent_no_tool():
     resp = agent.run("No tools available")
     assert resp.tool == "none"
     assert resp.output == "no_suitable_tool"
+
+
+def test_agent_rag_prefix():
+    STORE.add("RAG retrieves context before generation")
+    agent = Agent(REGISTRY)
+    resp = agent.run("rag: RAG")
+    assert resp.tool == "rag_search"
+    results = json.loads(resp.output)
+    assert any("RAG retrieves context before generation" in r.get("text") for r in results)
+
+
+def test_agent_rag_no_results():
+    agent = Agent(REGISTRY)
+    resp = agent.run("rag: no-such-keyword")
+    assert resp.tool == "rag_search"
+    assert resp.output == "no_results"

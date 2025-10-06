@@ -16,6 +16,7 @@ TOOL_ALIASES = {
     "calculate": "calculator",
     "echo": "echo",
     "ping": "ping",
+    "rag": "rag_search",
 }
 
 
