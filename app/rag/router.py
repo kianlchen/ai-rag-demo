@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from .store import STORE
 
 router = APIRouter(prefix="/rag", tags=["rag"])
-store = STORE
 
 
 class AddRequest(BaseModel):
@@ -20,11 +19,15 @@ class QueryRequest(BaseModel):
 def add_doc(req: AddRequest):
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
-    doc_id = store.add(req.text)
+    doc_id = STORE.add(req.text)
     return {"id": doc_id}
 
 
 @router.post("/query")
 def query_docs(req: QueryRequest):
-    results = store.query(req.query, limit=req.limit)
-    return {"results": results}
+    return {"results": STORE.query(req.query, limit=req.limit)}
+
+
+@router.post("/query_vector")
+def query_vector(req: QueryRequest):
+    return {"results": STORE.query_vector(req.query, limit=req.limit)}

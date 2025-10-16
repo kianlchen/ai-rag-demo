@@ -17,6 +17,7 @@ TOOL_ALIASES = {
     "echo": "echo",
     "ping": "ping",
     "rag": "rag_search",
+    "rag_answer": "rag_answer",
 }
 
 

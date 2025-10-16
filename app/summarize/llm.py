@@ -11,7 +11,7 @@ class LLM(Protocol):
     def summarize(self, text: str, max_words: int = 80, strict: bool = False) -> Tuple[str, float]:
         """
         Returns (summary, confidence in [0,1]).
-        Implementations should NOT raise on minotr format issues.
+        Implementations should NOT raise on minor format issues.
         """
 
 

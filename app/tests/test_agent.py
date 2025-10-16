@@ -12,13 +12,6 @@ from app.rag.store import STORE
 client = TestClient(app)
 
 
-@pytest.fixture(autouse=True)
-def _clear_store():
-    STORE.docs.clear()
-    yield
-    STORE.docs.clear()
-
-
 def test_decide_and_run_calculator():
     agent = Agent(REGISTRY)
     resp = agent.run("(-1)*(2 + 2)")
@@ -116,3 +109,41 @@ def test_agent_rag_no_results():
     resp = agent.run("rag: no-such-keyword")
     assert resp.tool == "rag_search"
     assert resp.output == "no_results"
+
+
+def test_agent_rag_answer_no_query_vector(monkeypatch):
+    import app.agents.tools as tools
+
+    # simulate STORE.query_vector returning no results
+    monkeypatch.setattr(tools.STORE, "query_vector", lambda q, limit=3: [])
+    # Ensure summarize_with_retry is not called
+    monkeypatch.setattr(
+        tools,
+        "summarize_with_retry",
+        lambda prompt, max_words=80: ("should not be called", 0.0, []),
+    )
+    agent = Agent(REGISTRY)
+    resp = agent.run("rag_answer: no relevant docs")
+    assert resp.tool == "rag_answer"
+    result = json.loads(resp.output)
+    assert result["answer"] == "no relevant context found"
+    assert result["sources"] == []
+
+
+def test_agent_rag_answer_with_dummyllm(monkeypatch):
+    from app.summarize.config import settings
+
+    settings.llm_provider = "dummy"  # Ensure using DummyLLM for this test
+    settings.openai_api_key = None
+
+    # add a doc to be retrieved
+    doc_id = STORE.add("This is a test document for RAG answer.")
+
+    agent = Agent(REGISTRY)
+    resp = agent.run("rag_answer: test document")
+    assert resp.tool == "rag_answer"
+    result = json.loads(resp.output)
+    # assert to 80 words of 1st line due of prompt due to max_words=80 in rag_answer
+    assert len(result["answer"].split()) <= 80
+    assert "Using only the context below, answer the question" in result["answer"]
+    assert doc_id in result["sources"]

@@ -6,6 +6,7 @@ import operator as op
 from typing import Callable, Dict
 
 from app.rag.store import STORE
+from app.summarize.llm import summarize_with_retry
 
 Tool = Callable[[str], str]
 
@@ -35,7 +36,7 @@ def _eval_node(node: ast.AST) -> float:
 
 def _safe_calc(expr: str) -> str:
     try:
-        parsed = ast.parse(expr, mode="eval")
+        parsed = ast.parse(expr, mode="eval").body
         val = _eval_node(parsed)
         return str(int(val)) if float(val).is_integer() else str(val)
     except Exception:
@@ -65,9 +66,24 @@ def rag_search(query: str) -> str:
     return json.dumps(results)
 
 
+def rag_answer(query: str) -> str:
+    """
+    Retrieve top-k semantically similar docs, then summarize into an answer.
+    Returns a compact JSON string with {answer, sources:[ids]}
+    """
+    results = STORE.query_vector(query, limit=3)
+    if not results:
+        return json.dumps({"answer": "no relevant context found", "sources": []})
+    context = "\n\n".join(f"- {r['text']}" for r in results)
+    prompt = f"Using only the context below, answer the question.\n\nQuestion: {query}\n\nContext:\n{context}\n\nAnswer:"
+    summary, conf, _ = summarize_with_retry(prompt, max_words=80)
+    return json.dumps({"answer": summary or "", "sources": [r["id"] for r in results]})
+
+
 REGISTRY: Dict[str, Tool] = {
     "calculator": calculator,
     "echo": echo,
     "ping": ping,
     "rag_search": rag_search,
+    "rag_answer": rag_answer,
 }

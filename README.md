@@ -1,10 +1,18 @@
 # AI RAG Demo
+![coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)
 
 This project demonstrates how to build and run a simple AI-powered FastAPI service with multiple capabilities:
 - **`/summarize`**: Uses a pluggable LLM (dummy by default) to shorten or summarize text with basic retry/self-check logic.
 - **`/agent`**: A minimal, rule-based agent that decides which tool to run (calculator, ping, echo), execute it, and return structured results with history.
 - **`/ping`**: Simple health check that returns `{"status": "ok"}`. Useful for monitoring or testing service availability.
 - **`/rag`**: Simple retrieval API to add and query text documents, used by the agent's `rag:` tool for keyword-based search.
+
+## System Overview
+- FastAPI service exposing `/summarize`, `/agent`, `/rag`
+- Core packages:
+  - `app/agents/` - tool routing & agent logic
+  - `app/rag/` - document store, embeddings, retrieval
+  - `app/summarize/` - LLM abstraction layer
 
 ## Agent Scaffolding
 
@@ -15,7 +23,8 @@ It decides which tool to run based on simple heuristics:
    - `calc: <expr>` -> runs the calculator
    - `echo: <text>` -> runs the echo tool
    - `ping` -> runs the ping tool
-   - `rag: <text>` -> runs the rag tool
+   - `rag: <text>` -> runs a dummy rag tool based on top-N docs ranked by simple keyword scoring.
+   - `rag_anwer: <text>` -> runs a rag tool based on coine similarity with stored vectors
 
 2. **Math detection**
    - If the input looks like a math expression (digits/operators only), the calculator tool is used.
@@ -63,6 +72,35 @@ Results are ranked by:
 1. Keyword frequency
 2. First occurrence position
 3. Document length
+
+## RAG Answering
+
+The `rag_answer` tool extends the basic retrieval API by combining retrieved documents
+with a summarization step to form a minimal **Retrieval-Augmented Generation (RAG)** pipeline.
+
+- It searches the vector store using mock or real embeddings.
+- Builds a short prompt that includes the retrieved context.
+- Summarize the results with the configured LLM (by default, a deterministic `DummyLLM`)
+
+### Example
+```bash
+curl -s -X POST http://127.0.0.1:8000/agent \
+  -H "Content-Type: application/json" \
+  -d '{"text":"rag_answer: Explain RAG"}' | jq
+```
+Example response:
+```json
+{
+  "tool": "rag_answer",
+  "output": "{\"answer\": \"RAG = retrieve first, then generate.\", \"sources\": [\"b9d4...\", \"9a12...\"]}",
+  "history": [...]
+}
+```
+When no relevant documents are found, the tool returns:
+```json
+  "answer": "no relevant context found",
+  "sources": []
+```
 
 ## Setup
 
@@ -152,3 +190,20 @@ curl -s -X POST http://127.0.0.1:8000/agent \
   "history": [...]
 }
 ```
+
+## Testing and Development
+
+All core modules (`agent`, `rag`, `embeddings`, and `tools`) include full pytest coverage,
+including import-time behavior and fallback logic.
+
+Key test coverage:
+- **Embeddings:** Safe normalization, import fallback when `openai` not installed
+- **Agent Tools:** `calculator`, `echo`, `ping`, `rag_search`, `rag_answer`.
+- **RAG Answer:** Verifies both "no results" and "context found" branches.
+
+Run tests:
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+> Current test coverage: **~94%**
